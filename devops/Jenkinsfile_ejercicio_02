@@ -1,0 +1,15 @@
+pipeline {
+    agent any
+    stages {
+        stage('Test') {
+            agent {
+                // Contenedor específico 
+                docker { image 'maven:3.8.6-openjdk-11-slim' } 
+            }
+            steps {
+                // Ejecución de pruebas Java
+                sh 'mvn test' 
+            }
+        }
+    }
+}
