@@ -1,39 +1,85 @@
-// Ejercicio 4: Función reutilizable para evitarduplicar bloque de Docker en cada stage
 def runInDocker(String image, Closure body) {
-    docker.image(image).inside {
-        body()
-    }
+    docker.image(image).inside { body() }
 }
 
 pipeline {
     agent any
+
+    // Ejercicio 6.4: Variables de entorno
+    environment {
+        IMAGE_NAME = "devops-java-app:${env.BUILD_NUMBER}"
+        APP_URL    = "http://localhost:8080/"
+    }
+
+    // Ejercicio 6.3: Parámetros de construcción
+    parameters {
+        booleanParam(name: 'RUN_CD', defaultValue: false, description: 'Ejecutar CD manualmente')
+    }
+
     stages {
-        // Ejercicio 3: Separamos lint y test en dos stages 
-        stage('Lint') {
+        stage('CI (Lint & Test)') {
             steps {
                 script {
                     runInDocker('maven:3.8.6-openjdk-11-slim') {
-                        sh 'mvn checkstyle:check || echo "Lint ignorado"'
-                    }
-                }
-            }
-        }
-        stage('Test') {
-            steps {
-                script {
-                    runInDocker('maven:3.8.6-openjdk-11-slim') {
+                        sh 'mvn checkstyle:check || echo "Lint falló"'
                         sh 'mvn test'
                     }
                 }
             }
         }
-        stage('Build image') {
+
+        stage('Build Image') {
             steps {
                 script {
-                    // Ejercicio 5: Convertimos codigo a artefacto desplegable
-                    docker.build("java-app:${env.BUILD_NUMBER}", "-f devops/Dockerfile .")
+                    // Construcción usando Dockerfile en carpeta devops/ 
+                    docker.build("${env.IMAGE_NAME}", "-f devops/Dockerfile .")
                 }
             }
+        }
+        // Ejercicio 6.0: Crear un stage CD, docker compose, sleep y docker compose down
+        stage('CD') {
+            // Ejercicio 6.1: Ejecución por rama o parámetro
+            when {
+                anyOf {
+                    expression { return params.RUN_CD }
+                    branch 'develop'
+                    branch 'master'
+                }
+            }
+            steps {
+                script {
+                    // Ejercicio 6.2: Definición de entorno DEV/PRO
+                    env.DEPLOY_ENV = (env.BRANCH_NAME == 'master') ? 'PRO' : 'DEV'
+                    def projectName = env.DEPLOY_ENV.toLowerCase()
+                    
+                    echo "Deploying to ${env.DEPLOY_ENV}"
+                    
+                    // Ejercicio 6: Up -> Logs
+                    // Usamos un proyecto distinto por entorno
+                    sh "docker compose -p ${projectName} up -d"
+                    sleep 5
+                    sh "docker compose -p ${projectName} logs"
+                }
+            }
+            // Ejercicio 6.5: Limpieza específica del stage CD
+            post {
+                always {
+                    script {
+                        def projectName = (env.BRANCH_NAME == 'master') ? 'pro' : 'dev'
+                        sh "docker compose -p ${projectName} down --volumes || true"
+                    }
+                }
+            }
+        }
+    }
+
+    // Ejercicio 6.5: Hooks globales para el resultado final
+    post {
+        success { echo 'SUCCESS' }
+        failure { echo 'FAILURE' }
+        always {
+            // Limpieza de imagen para ahorrar espacio
+            sh "docker rmi ${env.IMAGE_NAME} || true"
         }
     }
 }
