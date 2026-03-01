@@ -27,5 +27,13 @@ pipeline {
                 }
             }
         }
+        stage('Build image') {
+            steps {
+                script {
+                    // Ejercicio 5: Convertimos codigo a artefacto desplegable
+                    docker.build("java-app:${env.BUILD_NUMBER}", "-f devops/Dockerfile .")
+                }
+            }
+        }
     }
 }
