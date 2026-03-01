@@ -1,0 +1,11 @@
+pipeline {
+    agent any // Define dónde se ejecuta el pipeline 
+    stages {
+        stage('Info') { // Nueva etapa requerida 
+            steps {
+                echo "Job: ${env.JOB_NAME}" // Muestra el nombre del trabajo 
+                echo "Build: ${env.BUILD_NUMBER}" // Muestra el número de ejecución 
+            }
+        }
+    }
+}
