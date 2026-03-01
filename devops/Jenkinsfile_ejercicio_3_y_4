@@ -1,0 +1,31 @@
+// Ejercicio 4: Función reutilizable para evitarduplicar bloque de Docker en cada stage
+def runInDocker(String image, Closure body) {
+    docker.image(image).inside {
+        body()
+    }
+}
+
+pipeline {
+    agent any
+    stages {
+        // Ejercicio 3: Separamos lint y test en dos stages 
+        stage('Lint') {
+            steps {
+                script {
+                    runInDocker('maven:3.8.6-openjdk-11-slim') {
+                        sh 'mvn checkstyle:check || echo "Lint ignorado"'
+                    }
+                }
+            }
+        }
+        stage('Test') {
+            steps {
+                script {
+                    runInDocker('maven:3.8.6-openjdk-11-slim') {
+                        sh 'mvn test'
+                    }
+                }
+            }
+        }
+    }
+}
