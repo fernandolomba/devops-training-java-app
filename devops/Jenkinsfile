@@ -1,10 +1,14 @@
 pipeline {
-    agent any // Define dónde se ejecuta el pipeline 
+    agent any
     stages {
-        stage('Info') { // Nueva etapa requerida 
+        stage('Test') {
+            agent {
+                // Contenedor específico 
+                docker { image 'maven:3.8.6-openjdk-11-slim' } 
+            }
             steps {
-                echo "Job: ${env.JOB_NAME}" // Muestra el nombre del trabajo 
-                echo "Build: ${env.BUILD_NUMBER}" // Muestra el número de ejecución 
+                // Ejecución de pruebas Java
+                sh 'mvn test' 
             }
         }
     }
